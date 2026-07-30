@@ -17,3 +17,34 @@ body {
   color: var(--foreground);
   font-family: Inter, Arial, Helvetica, sans-serif;
 }
+
+.scrollarea {
+  scrollbar-color: #c7c4d8 transparent;
+  scrollbar-width: thin;
+}
+
+.scrollarea::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.scrollarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollarea::-webkit-scrollbar-thumb {
+  background: #c7c4d8;
+  border-radius: 999px;
+}
+
+.scrollarea::-webkit-scrollbar-thumb:hover {
+  background: #9d98bc;
+}
+
+.scrollarea-hidden {
+  scrollbar-width: none;
+}
+
+.scrollarea-hidden::-webkit-scrollbar {
+  display: none;
+}

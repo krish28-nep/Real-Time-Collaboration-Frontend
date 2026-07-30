@@ -25,7 +25,6 @@ import {
   deleteMessageReaction,
   getChannelMessages,
   sendChannelMessage,
-  updateMessageReaction,
   uploadMessageImages,
 } from "@/lib/api/messages";
 import { getCurrentUser, getUsers } from "@/lib/api/users";
@@ -274,13 +273,6 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
     onError: (error) => toast.error("Could not delete reaction", { description: getApiErrorMessage(error) }),
   });
 
-  const editReactionMutation = useMutation({
-    mutationFn: ({ messageId, oldEmoji, newEmoji }: { messageId: number; oldEmoji: string; newEmoji: string }) =>
-      updateMessageReaction(messageId, { oldEmoji, newEmoji }),
-    onSuccess: invalidateMessages,
-    onError: (error) => toast.error("Could not edit reaction", { description: getApiErrorMessage(error) }),
-  });
-
   const olderMessages = olderMessagesState.channelId === channelId ? olderMessagesState.items : [];
   const nextCursor = olderMessages.length > 0 ? olderMessagesState.nextCursor : messagesQuery.data?.nextCursor;
   const hasMore = olderMessages.length > 0 ? olderMessagesState.hasMore : messagesQuery.data?.hasMore ?? false;
@@ -429,17 +421,6 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
     });
   }
 
-  function editReaction(messageId: number) {
-    const oldEmoji = prompt("Old emoji");
-    const newEmoji = prompt("New emoji");
-
-    if (!oldEmoji || !newEmoji) {
-      return;
-    }
-
-    editReactionMutation.mutate({ messageId, oldEmoji, newEmoji });
-  }
-
   return (
     <>
       <Script
@@ -447,13 +428,15 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
         onLoad={connectSignalR}
       />
 
-      <main className="grid min-h-screen grid-cols-[72px_280px_minmax(0,1fr)] bg-[#f8faff] text-[#464555] max-md:grid-cols-1">
+      <main className="grid h-dvh min-h-0 min-w-0 grid-rows-[46px_46px_minmax(0,1fr)] overflow-hidden bg-[#f8faff] text-[#464555] md:grid-cols-[72px_280px_minmax(0,1fr)] md:grid-rows-1">
         <WorkspaceRail
           activeWorkspaceId={workspaceId}
           firstChannelByWorkspace={firstChannelsQuery.data || {}}
           invitationCount={invitationsQuery.data?.length ?? 0}
           isLoading={workspacesQuery.isLoading}
+          currentUser={currentUserQuery.data}
           onCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
+          onLogout={logout}
           onOpenInvitations={() => setIsInvitationInboxOpen(true)}
           workspaces={workspacesQuery.data || []}
         />
@@ -479,50 +462,51 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
           onLogout={logout}
         />
 
-        <section className="grid min-h-screen grid-rows-[auto_minmax(0,1fr)_auto]">
-          <header className="flex items-center justify-between border-b border-[#e1e6f4] bg-white px-6 py-4">
-            <div>
-              <p className="text-xs font-semibold uppercase text-[#77758a]">Chat room</p>
-              <h2 className="text-2xl font-bold text-[#262538]"># {activeChannel?.name || "channel"}</h2>
+        <section className="grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden md:grid-rows-[auto_minmax(0,1fr)_auto]">
+          <header className="flex min-w-0 items-center justify-between gap-3 border-b border-[#e1e6f4] bg-white px-6 py-4 max-md:hidden">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase text-[#77758a] max-sm:hidden">Chat room</p>
+              <h2 className="truncate text-2xl font-bold text-[#262538] max-sm:text-lg"># {activeChannel?.name || "channel"}</h2>
             </div>
-            <span className="rounded-lg bg-[#dce9ff] px-3 py-1 text-sm font-semibold text-[#3525cd]">
+            <span className="shrink-0 rounded-lg bg-[#dce9ff] px-3 py-1 text-sm font-semibold text-[#3525cd] max-sm:text-xs">
               {status}
             </span>
           </header>
 
-          {messagesQuery.isLoading || channelsQuery.isLoading || currentUserQuery.isLoading ? (
-            <div className="p-6">
-              <LoadingState />
-            </div>
-          ) : null}
+          <div className="min-h-0 min-w-0 overflow-hidden">
+            {messagesQuery.isLoading || channelsQuery.isLoading || currentUserQuery.isLoading ? (
+              <div className="h-full min-w-0 overflow-y-auto p-6 max-sm:p-3">
+                <LoadingState />
+              </div>
+            ) : null}
 
-          {messagesQuery.isError || channelsQuery.isError || currentUserQuery.isError ? (
-            <div className="p-6">
-              <ErrorState
-                message={getApiErrorMessage(messagesQuery.error || channelsQuery.error || currentUserQuery.error)}
+            {messagesQuery.isError || channelsQuery.isError || currentUserQuery.isError ? (
+              <div className="h-full min-w-0 overflow-y-auto p-6 max-sm:p-3">
+                <ErrorState
+                  message={getApiErrorMessage(messagesQuery.error || channelsQuery.error || currentUserQuery.error)}
+                />
+              </div>
+            ) : null}
+
+            {!messagesQuery.isLoading && !messagesQuery.isError && messages.length === 0 ? (
+              <div className="h-full min-w-0 overflow-y-auto p-6 max-sm:p-3">
+                <EmptyState title="No messages yet" description="Send the first message in this channel." />
+              </div>
+            ) : null}
+
+            {!messagesQuery.isLoading && !messagesQuery.isError && messages.length > 0 ? (
+              <MessageList
+                currentUser={currentUserQuery.data}
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                messages={messages}
+                onLoadOlder={loadOlderMessages}
+                onAddReaction={(messageId, emoji) => addReactionMutation.mutate({ messageId, emoji })}
+                onDeleteReaction={(messageId, emoji) => deleteReactionMutation.mutate({ messageId, emoji })}
+                onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
               />
-            </div>
-          ) : null}
-
-          {!messagesQuery.isLoading && !messagesQuery.isError && messages.length === 0 ? (
-            <div className="p-6">
-              <EmptyState title="No messages yet" description="Send the first message in this channel." />
-            </div>
-          ) : null}
-
-          {!messagesQuery.isLoading && !messagesQuery.isError && messages.length > 0 ? (
-            <MessageList
-              currentUser={currentUserQuery.data}
-              hasMore={hasMore}
-              isLoadingMore={isLoadingMore}
-              messages={messages}
-              onLoadOlder={loadOlderMessages}
-              onAddReaction={(messageId, emoji) => addReactionMutation.mutate({ messageId, emoji })}
-              onDeleteReaction={(messageId, emoji) => deleteReactionMutation.mutate({ messageId, emoji })}
-              onEditReaction={editReaction}
-              onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
-            />
-          ) : null}
+            ) : null}
+          </div>
 
           <MessageComposer
             isSending={sendMessageMutation.isPending}

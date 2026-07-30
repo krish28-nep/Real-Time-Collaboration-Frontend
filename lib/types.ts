@@ -23,6 +23,11 @@ export type MessageReaction = {
   emoji: string;
   count: number;
   reactedByMe: boolean;
+  users?: {
+    id: number;
+    username: string;
+    avatarUrl?: string | null;
+  }[];
 };
 
 export type Message = {
