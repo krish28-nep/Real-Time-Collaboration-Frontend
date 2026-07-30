@@ -1,0 +1,13 @@
+**/.dockerignore
+**/.env
+**/.git
+**/.gitignore
+**/.next
+**/.vscode
+**/Dockerfile*
+**/docker-compose*
+**/compose*
+**/node_modules
+**/npm-debug.log
+**/coverage
+**/.vercel
