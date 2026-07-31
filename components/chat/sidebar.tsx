@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit2, LogOut, Plus, Trash2, UserCircle } from "lucide-react";
+import { Edit2, LogOut, MoreVertical, Plus, Trash2, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ type ChatSidebarProps = {
   isDeletingChannel?: boolean;
   isEditingChannel?: boolean;
   isCreateChannelOpen?: boolean;
+  canManageWorkspace?: boolean;
   onInviteClick?: () => void;
   onCreateChannel?: (values: ChannelFormValues, reset: () => void) => void;
   onCreateChannelClose?: () => void;
@@ -41,6 +42,7 @@ export function ChatSidebar({
   isDeletingChannel = false,
   isEditingChannel = false,
   isCreateChannelOpen = false,
+  canManageWorkspace = false,
   onInviteClick,
   onCreateChannel,
   onCreateChannelClose,
@@ -52,6 +54,7 @@ export function ChatSidebar({
   onLogout,
 }: ChatSidebarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [actionChannel, setActionChannel] = useState<Channel | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -85,15 +88,17 @@ export function ChatSidebar({
 
           <div className="mb-2 flex items-center justify-between px-2 max-md:mb-0 max-md:px-0">
             <p className="text-xs font-semibold uppercase text-[#77758a] max-md:hidden">Channels</p>
-            <button
-              type="button"
-              title="Create channel"
-              aria-label="Create channel"
-              onClick={onCreateChannelOpen}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#3525cd] hover:bg-[#dce9ff] max-md:h-8 max-md:w-8 max-md:bg-white/70"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            </button>
+            {canManageWorkspace ? (
+              <button
+                type="button"
+                title="Create channel"
+                aria-label="Create channel"
+                onClick={onCreateChannelOpen}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#3525cd] hover:bg-[#dce9ff] max-md:h-8 max-md:w-8 max-md:bg-white/70"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
 
           <ScrollArea
@@ -104,7 +109,7 @@ export function ChatSidebar({
               {channels.map((channel) => (
                 <div
                   key={channel.id}
-                  className={`group flex min-h-9 items-center gap-1 rounded-lg px-2 max-md:h-8 max-md:min-h-8 max-md:shrink-0 max-md:rounded-full max-md:px-3 ${
+                  className={`group flex min-h-9 items-center gap-1 rounded-lg px-2 max-md:h-8 max-md:min-h-8 max-md:shrink-0 max-md:rounded-full max-md:px-2 ${
                     activeChannelId === channel.id
                       ? "bg-[#dce9ff] text-[#3525cd]"
                       : "text-[#464555] hover:bg-[#dce9ff]/70"
@@ -117,25 +122,38 @@ export function ChatSidebar({
                     <span className="w-5 text-center text-xl max-md:w-auto max-md:text-sm">#</span>
                     <span className="truncate">{channel.name}</span>
                   </Link>
-                  <button
-                    type="button"
-                    title="Edit channel"
-                    aria-label={`Edit ${channel.name}`}
-                    onClick={() => onEditChannelOpen?.(channel)}
-                    className="grid h-8 w-8 place-items-center rounded-lg opacity-80 hover:bg-white/70 max-md:hidden"
-                  >
-                    <Edit2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Delete channel"
-                    aria-label={`Delete ${channel.name}`}
-                    disabled={isDeletingChannel}
-                    onClick={() => onDeleteChannel?.(channel)}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-[#cc2f4a] opacity-80 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-40 max-md:hidden"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+                  {canManageWorkspace ? (
+                    <>
+                      <button
+                        type="button"
+                        title="Edit channel"
+                        aria-label={`Edit ${channel.name}`}
+                        onClick={() => onEditChannelOpen?.(channel)}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg opacity-80 hover:bg-white/70 max-md:hidden"
+                      >
+                        <Edit2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete channel"
+                        aria-label={`Delete ${channel.name}`}
+                        disabled={isDeletingChannel}
+                        onClick={() => onDeleteChannel?.(channel)}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#cc2f4a] opacity-80 hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-40 max-md:hidden"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Channel actions"
+                        aria-label={`${channel.name} actions`}
+                        onClick={() => setActionChannel(channel)}
+                        className="hidden h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/70 max-md:grid"
+                      >
+                        <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               ))}
             </nav>
@@ -143,9 +161,11 @@ export function ChatSidebar({
         </div>
 
         <div ref={profileMenuRef} className="relative flex flex-col gap-3 border-t border-[#c7c4d8] pt-6 max-md:hidden">
-          <Button type="button" onClick={onInviteClick}>
-            Invite Teammates
-          </Button>
+          {canManageWorkspace ? (
+            <Button type="button" onClick={onInviteClick}>
+              Invite Teammates
+            </Button>
+          ) : null}
 
           <button
             type="button"
@@ -192,6 +212,45 @@ export function ChatSidebar({
           onCancel={onCreateChannelClose}
           onSubmit={onCreateChannel || (() => undefined)}
         />
+      </Dialog>
+
+      <Dialog
+        open={Boolean(actionChannel)}
+        onClose={() => setActionChannel(null)}
+        title={actionChannel ? `# ${actionChannel.name}` : "Channel actions"}
+        description="Choose a channel action."
+      >
+        <div className="grid gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              if (actionChannel) {
+                onEditChannelOpen?.(actionChannel);
+              }
+              setActionChannel(null);
+            }}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            <Edit2 className="h-4 w-4" aria-hidden="true" />
+            Edit channel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={isDeletingChannel}
+            onClick={() => {
+              if (actionChannel) {
+                onDeleteChannel?.(actionChannel);
+              }
+              setActionChannel(null);
+            }}
+            className="flex w-full items-center justify-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete channel
+          </Button>
+        </div>
       </Dialog>
 
       <Dialog

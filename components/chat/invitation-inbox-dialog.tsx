@@ -12,7 +12,7 @@ type InvitationInboxDialogProps = {
   open: boolean;
   onAccept: (invitation: Invitation) => void;
   onClose: () => void;
-  onInviteClick: () => void;
+  onInviteClick?: () => void;
 };
 
 export function InvitationInboxDialog({
@@ -31,12 +31,14 @@ export function InvitationInboxDialog({
       title="Workspace invitations"
       description="Accept pending invitations from here."
     >
-      <div className="mb-3 flex justify-end">
-        <Button type="button" onClick={onInviteClick} className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" aria-hidden="true" />
-          Invite teammate
-        </Button>
-      </div>
+      {onInviteClick ? (
+        <div className="mb-3 flex justify-end">
+          <Button type="button" onClick={onInviteClick} className="flex items-center gap-2 max-sm:w-full max-sm:justify-center">
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Invite teammate
+          </Button>
+        </div>
+      ) : null}
 
       {isLoading ? <p className="text-sm text-[#77758a]">Loading invitations...</p> : null}
 
@@ -59,7 +61,12 @@ export function InvitationInboxDialog({
                 <UserPlus className="h-5 w-5" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="truncate font-bold text-[#262538]">Workspace #{invitation.workSpaceId}</p>
+                <p className="truncate font-bold text-[#262538]">
+                  {invitation.workSpaceName || `Workspace #${invitation.workSpaceId}`}
+                </p>
+                <p className="truncate text-xs text-[#77758a]">
+                  Invited by {invitation.invitedByUsername || invitation.invitedByEmail || `User #${invitation.invitedByUserId}`}
+                </p>
                 <p className="text-xs text-[#77758a]">Expires {formatDate(invitation.expireAt)}</p>
               </div>
             </div>
@@ -67,7 +74,7 @@ export function InvitationInboxDialog({
               type="button"
               disabled={acceptingToken === invitation.token}
               onClick={() => onAccept(invitation)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 max-sm:w-full max-sm:justify-center"
             >
               <Check className="h-4 w-4" aria-hidden="true" />
               {acceptingToken === invitation.token ? "Accepting..." : "Accept"}

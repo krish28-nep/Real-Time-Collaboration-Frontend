@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 
 type InviteTeammateDialogProps = {
   currentUser?: User;
+  invitationToken?: string | null;
   isInviting: boolean;
   isLoadingUsers: boolean;
   open: boolean;
@@ -19,6 +21,7 @@ type InviteTeammateDialogProps = {
 
 export function InviteTeammateDialog({
   currentUser,
+  invitationToken,
   isInviting,
   isLoadingUsers,
   open,
@@ -28,7 +31,9 @@ export function InviteTeammateDialog({
 }: InviteTeammateDialogProps) {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const debouncedSearch = useDebounce(search);
+  const didCopyToken = Boolean(invitationToken && copiedToken === invitationToken);
 
   const inviteableUsers = useMemo(() => {
     const value = debouncedSearch.trim().toLowerCase();
@@ -45,6 +50,29 @@ export function InviteTeammateDialog({
       description="Choose a user and create a workspace invitation."
     >
       <div className="space-y-3">
+        {invitationToken ? (
+          <div className="rounded-lg border border-[#c7c4d8] bg-[#f8faff] p-3">
+            <p className="text-sm font-bold text-[#262538]">Invitation token</p>
+            <div className="mt-2 flex min-w-0 items-center gap-2 max-sm:flex-col max-sm:items-stretch">
+              <code className="min-w-0 flex-1 break-all rounded-lg bg-white px-3 py-2 text-xs font-semibold text-[#464555]">
+                {invitationToken}
+              </code>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  await navigator.clipboard?.writeText(invitationToken);
+                  setCopiedToken(invitationToken);
+                }}
+                className="flex items-center justify-center gap-2 max-sm:w-full"
+              >
+                {didCopyToken ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                {didCopyToken ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search users" />
 
         <div className="max-h-72 overflow-auto rounded-lg border border-[#e1e6f4]">
@@ -76,14 +104,15 @@ export function InviteTeammateDialog({
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
+        <div className="flex justify-end gap-2 max-sm:flex-col-reverse">
+          <Button type="button" variant="ghost" onClick={onClose} className="max-sm:w-full">
             Cancel
           </Button>
           <Button
             type="button"
             disabled={isInviting || !selectedUserId}
             onClick={() => selectedUserId && onInvite(selectedUserId)}
+            className="max-sm:w-full"
           >
             {isInviting ? "Inviting..." : "Create invite"}
           </Button>

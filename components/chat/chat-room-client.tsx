@@ -34,6 +34,7 @@ import { clearToken, getToken } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { queryKeys } from "@/lib/query-keys";
 import { Dialog } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { WorkspaceForm } from "@/components/forms/workspace-form";
 import { logoutUser } from "@/lib/api/auth";
 import type { Channel, DeletedMessageEvent, Invitation, Message, MessageListResponse } from "@/lib/types";
@@ -44,6 +45,10 @@ type ChatRoomClientProps = {
   channelId: number;
   workspaceId: number;
 };
+
+type DeleteTarget =
+  | { type: "channel"; channel: Channel }
+  | { type: "message"; messageId: number };
 
 type HubConnection = {
   start: () => Promise<void>;
@@ -78,6 +83,8 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [createdInviteToken, setCreatedInviteToken] = useState<string | null>(null);
   const [olderMessagesState, setOlderMessagesState] = useState<{
     channelId: number;
     hasMore: boolean;
@@ -192,6 +199,7 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
     mutationFn: (channel: Channel) => deleteWorkspaceChannel(workspaceId, channel.id).then(() => channel),
     onSuccess: async (deletedChannel) => {
       toast.success("Channel deleted", { description: `# ${deletedChannel.name} was removed.` });
+      setDeleteTarget(null);
       await invalidateChannels();
 
       if (deletedChannel.id === channelId) {
@@ -208,8 +216,8 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
     mutationFn: (invitedUserId: number) => createInvitation({ workSpaceId: workspaceId, invitedUserId }),
     onSuccess: async (invitation) => {
       await navigator.clipboard?.writeText(invitation.token);
-      toast.success("Invitation created", { description: "Invitation token copied to clipboard." });
-      setIsInviteOpen(false);
+      setCreatedInviteToken(invitation.token);
+      toast.success("Invitation created", { description: "Token copied. You can also copy it from the dialog." });
       await queryClient.invalidateQueries({ queryKey: queryKeys.invitations.me });
     },
     onError: (error) => {
@@ -253,6 +261,7 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: number) => deleteChannelMessage(channelId, messageId),
     onSuccess: async (_, messageId) => {
+      setDeleteTarget(null);
       markMessageDeleted(messageId);
       await queryClient.invalidateQueries({ queryKey: queryKeys.messages.byChannel(channelId) });
     },
@@ -278,6 +287,8 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
   const hasMore = olderMessages.length > 0 ? olderMessagesState.hasMore : messagesQuery.data?.hasMore ?? false;
   const messages = [...(messagesQuery.data?.items || []), ...olderMessages];
   const activeChannel = channelsQuery.data?.find((channel) => channel.id === channelId);
+  const activeWorkspace = workspacesQuery.data?.find((workspace) => workspace.id === workspaceId);
+  const canManageWorkspace = Boolean(activeWorkspace && activeWorkspace.ownerId === currentUserQuery.data?.id);
 
   useEffect(() => {
     if (channelsQuery.data && channelId === 0 && channelsQuery.data[0]) {
@@ -365,12 +376,20 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
   }
 
   function deleteChannel(channel: Channel) {
-    const shouldDelete = window.confirm(`Delete #${channel.name}? Messages in this channel will also be removed.`);
-    if (!shouldDelete) {
+    setDeleteTarget({ type: "channel", channel });
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) {
       return;
     }
 
-    deleteChannelMutation.mutate(channel);
+    if (deleteTarget.type === "channel") {
+      deleteChannelMutation.mutate(deleteTarget.channel);
+      return;
+    }
+
+    deleteMessageMutation.mutate(deleteTarget.messageId);
   }
 
   function createNewWorkspace(values: WorkspaceFormValues, reset: () => void) {
@@ -451,7 +470,11 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
           isDeletingChannel={deleteChannelMutation.isPending}
           isEditingChannel={editChannelMutation.isPending}
           isCreateChannelOpen={isCreateChannelOpen}
-          onInviteClick={() => setIsInviteOpen(true)}
+          canManageWorkspace={canManageWorkspace}
+          onInviteClick={() => {
+            setCreatedInviteToken(null);
+            setIsInviteOpen(true);
+          }}
           onCreateChannel={createChannel}
           onCreateChannelClose={() => setIsCreateChannelOpen(false)}
           onCreateChannelOpen={() => setIsCreateChannelOpen(true)}
@@ -503,7 +526,7 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
                 onLoadOlder={loadOlderMessages}
                 onAddReaction={(messageId, emoji) => addReactionMutation.mutate({ messageId, emoji })}
                 onDeleteReaction={(messageId, emoji) => deleteReactionMutation.mutate({ messageId, emoji })}
-                onDeleteMessage={(messageId) => deleteMessageMutation.mutate(messageId)}
+                onDeleteMessage={(messageId) => setDeleteTarget({ type: "message", messageId })}
               />
             ) : null}
           </div>
@@ -517,11 +540,15 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
 
       <InviteTeammateDialog
         currentUser={currentUserQuery.data}
+        invitationToken={createdInviteToken}
         isInviting={createInviteMutation.isPending}
         isLoadingUsers={usersQuery.isLoading}
         open={isInviteOpen}
         users={usersQuery.data || []}
-        onClose={() => setIsInviteOpen(false)}
+        onClose={() => {
+          setIsInviteOpen(false);
+          setCreatedInviteToken(null);
+        }}
         onInvite={(userId) => createInviteMutation.mutate(userId)}
       />
 
@@ -532,10 +559,15 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
         open={isInvitationInboxOpen}
         onAccept={(invitation) => acceptInvitationMutation.mutate(invitation)}
         onClose={() => setIsInvitationInboxOpen(false)}
-        onInviteClick={() => {
-          setIsInvitationInboxOpen(false);
-          setIsInviteOpen(true);
-        }}
+        onInviteClick={
+          canManageWorkspace
+            ? () => {
+                setIsInvitationInboxOpen(false);
+                setCreatedInviteToken(null);
+                setIsInviteOpen(true);
+              }
+            : undefined
+        }
       />
 
       <Dialog
@@ -548,6 +580,32 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
           isSubmitting={createWorkspaceMutation.isPending}
           onSubmit={createNewWorkspace}
         />
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={deleteTarget?.type === "channel" ? "Delete channel" : "Delete message"}
+        description={
+          deleteTarget?.type === "channel"
+            ? "Messages in this channel will also be removed."
+            : "This will show as deleted in the conversation."
+        }
+      >
+        <div className="flex justify-end gap-2 max-sm:flex-col-reverse">
+          <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)} className="max-sm:w-full">
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={deleteChannelMutation.isPending || deleteMessageMutation.isPending}
+            onClick={confirmDelete}
+            className="max-sm:w-full"
+          >
+            {deleteChannelMutation.isPending || deleteMessageMutation.isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </div>
       </Dialog>
     </>
   );
