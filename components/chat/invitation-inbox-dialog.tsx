@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Inbox } from "lucide-react";
+import { Check, Inbox, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import type { Invitation } from "@/lib/types";
@@ -45,9 +45,14 @@ export function InvitationInboxDialog({
             key={invitation.id}
             className="flex items-center justify-between gap-4 rounded-lg border border-[#e1e6f4] p-3 max-sm:flex-col max-sm:items-start"
           >
-            <div>
-              <p className="font-bold text-[#262538]">Workspace #{invitation.workSpaceId}</p>
-              <p className="text-xs text-[#77758a]">Expires {formatDate(invitation.expireAt)}</p>
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#dce9ff] text-[#3525cd]">
+                <UserPlus className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate font-bold text-[#262538]">Workspace #{invitation.workSpaceId}</p>
+                <p className="text-xs text-[#77758a]">Expires {formatDate(invitation.expireAt)}</p>
+              </div>
             </div>
             <Button
               type="button"

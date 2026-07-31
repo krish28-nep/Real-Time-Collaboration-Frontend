@@ -51,6 +51,10 @@ export function MessageList({
     () => messages.find((message) => message.id === emojiPickerMessageId) ?? null,
     [messages, emojiPickerMessageId]
   );
+  const activeActionMessage = useMemo(
+    () => messages.find((message) => message.id === activeActionMessageId) ?? null,
+    [messages, activeActionMessageId]
+  );
   const latestMessageId = messages[0]?.id;
 
   useEffect(() => {
@@ -126,6 +130,12 @@ export function MessageList({
     setEmojiPickerMessageId(null);
   }
 
+  function runTouchAction(event: TouchEvent, action: () => void) {
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden px-6 py-5 max-sm:px-2 max-sm:py-2">
       {hasMore ? (
@@ -163,11 +173,7 @@ export function MessageList({
                   }`}
                 >
                   <div
-                    className={`absolute -top-4 z-10 flex max-w-[calc(100vw-1rem)] translate-y-1 items-center gap-1 overflow-x-auto rounded-full border border-[#dfe5f2] bg-white/95 px-1.5 py-1 opacity-0 shadow-lg shadow-[#262538]/10 backdrop-blur transition duration-200 ease-out md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 max-sm:-top-3 max-sm:pointer-events-none ${
-                      activeActionMessageId === message.id
-                        ? "max-sm:pointer-events-auto max-sm:translate-y-0 max-sm:opacity-100"
-                        : ""
-                    } ${isMine ? "left-2 sm:left-4" : "right-2 sm:right-4"
+                    className={`absolute -top-4 z-10 hidden max-w-[calc(100vw-1rem)] translate-y-1 items-center gap-1 overflow-x-auto rounded-full border border-[#dfe5f2] bg-white/95 px-1.5 py-1 opacity-0 shadow-lg shadow-[#262538]/10 backdrop-blur transition duration-200 ease-out md:flex md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 ${isMine ? "left-4" : "right-4"
                     }`}
                     onTouchStart={(event) => event.stopPropagation()}
                     onTouchEnd={(event) => event.stopPropagation()}
@@ -192,6 +198,12 @@ export function MessageList({
                           toggleReaction(message, emoji);
                           setActiveActionMessageId(null);
                         }}
+                        onTouchEnd={(event) =>
+                          runTouchAction(event, () => {
+                            toggleReaction(message, emoji);
+                            setActiveActionMessageId(null);
+                          })
+                        }
                         className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-base transition hover:scale-110 max-sm:h-7 max-sm:w-7 max-sm:text-sm ${
                           message.reactions.some((reaction) => reaction.emoji === emoji && reaction.reactedByMe)
                             ? "bg-[#dce9ff] ring-1 ring-[#9ebcff]"
@@ -209,6 +221,12 @@ export function MessageList({
                         setEmojiPickerMessageId(message.id);
                         setActiveActionMessageId(null);
                       }}
+                      onTouchEnd={(event) =>
+                        runTouchAction(event, () => {
+                          setEmojiPickerMessageId(message.id);
+                          setActiveActionMessageId(null);
+                        })
+                      }
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#3525cd] transition hover:scale-110 hover:bg-[#eff4ff] max-sm:h-7 max-sm:w-7"
                     >
                       <Plus className="h-4 w-4" aria-hidden="true" />
@@ -222,6 +240,12 @@ export function MessageList({
                           onDeleteMessage(message.id);
                           setActiveActionMessageId(null);
                         }}
+                        onTouchEnd={(event) =>
+                          runTouchAction(event, () => {
+                            onDeleteMessage(message.id);
+                            setActiveActionMessageId(null);
+                          })
+                        }
                         className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#cc2f4a] transition hover:scale-110 hover:bg-[#fff0f3] max-sm:h-7 max-sm:w-7"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -271,6 +295,7 @@ export function MessageList({
                           title={reaction.reactedByMe ? "Remove reaction" : "Add reaction"}
                           aria-label={`${reaction.emoji} ${reaction.count}`}
                           onClick={() => toggleReaction(message, reaction.emoji)}
+                          onTouchEnd={(event) => runTouchAction(event, () => toggleReaction(message, reaction.emoji))}
                           className={`flex h-7 items-center gap-1 rounded-full border px-2 text-xs font-bold shadow-sm transition hover:-translate-y-0.5 ${
                             reaction.reactedByMe
                               ? "border-[#9ebcff] bg-[#dce9ff] text-[#3525cd]"
@@ -287,6 +312,9 @@ export function MessageList({
                           title="Show all reactions"
                           aria-label="Show all reactions"
                           onClick={() => setReactionDetailsMessageId(message.id)}
+                          onTouchEnd={(event) =>
+                            runTouchAction(event, () => setReactionDetailsMessageId(message.id))
+                          }
                           className="flex h-7 items-center rounded-full border border-[#dfe5f2] bg-white px-2 text-xs font-bold text-[#464555] shadow-sm transition hover:-translate-y-0.5 hover:border-[#c9d5ee]"
                         >
                           ... +{hiddenReactionCount}
@@ -300,6 +328,101 @@ export function MessageList({
           })}
         </div>
       </ScrollArea>
+
+      {activeActionMessage ? (
+        <div className="md:hidden">
+          <button
+            type="button"
+            aria-label="Close message actions"
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setActiveActionMessageId(null)}
+            onTouchEnd={(event) => runTouchAction(event, () => setActiveActionMessageId(null))}
+          />
+
+          <div
+            className="fixed inset-x-0 bottom-0 z-50 border-t border-[#dfe5f2] bg-white px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 shadow-[0_-16px_38px_rgba(38,37,56,0.16)]"
+            onClick={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            onTouchEnd={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto flex max-w-sm items-center justify-center gap-2 overflow-x-auto">
+              {QUICK_REACTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  title={
+                    activeActionMessage.reactions.some((reaction) => reaction.emoji === emoji && reaction.reactedByMe)
+                      ? `Remove ${emoji}`
+                      : `React ${emoji}`
+                  }
+                  aria-label={
+                    activeActionMessage.reactions.some((reaction) => reaction.emoji === emoji && reaction.reactedByMe)
+                      ? `Remove ${emoji}`
+                      : `React ${emoji}`
+                  }
+                  onClick={() => {
+                    toggleReaction(activeActionMessage, emoji);
+                    setActiveActionMessageId(null);
+                  }}
+                  onTouchEnd={(event) =>
+                    runTouchAction(event, () => {
+                      toggleReaction(activeActionMessage, emoji);
+                      setActiveActionMessageId(null);
+                    })
+                  }
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-lg transition ${
+                    activeActionMessage.reactions.some((reaction) => reaction.emoji === emoji && reaction.reactedByMe)
+                      ? "bg-[#dce9ff] ring-1 ring-[#9ebcff]"
+                      : "bg-[#f5f7fc]"
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                title="Add emoji"
+                aria-label="Add emoji"
+                onClick={() => {
+                  setEmojiPickerMessageId(activeActionMessage.id);
+                  setActiveActionMessageId(null);
+                }}
+                onTouchEnd={(event) =>
+                  runTouchAction(event, () => {
+                    setEmojiPickerMessageId(activeActionMessage.id);
+                    setActiveActionMessageId(null);
+                  })
+                }
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f5f7fc] text-[#3525cd]"
+              >
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </button>
+
+              {currentUser?.id === activeActionMessage.userId ? (
+                <button
+                  type="button"
+                  title="Delete message"
+                  aria-label="Delete message"
+                  onClick={() => {
+                    onDeleteMessage(activeActionMessage.id);
+                    setActiveActionMessageId(null);
+                  }}
+                  onTouchEnd={(event) =>
+                    runTouchAction(event, () => {
+                      onDeleteMessage(activeActionMessage.id);
+                      setActiveActionMessageId(null);
+                    })
+                  }
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#fff0f3] text-[#cc2f4a]"
+                >
+                  <Trash2 className="h-5 w-5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Dialog
         open={Boolean(reactionDetailsMessage)}
