@@ -98,6 +98,7 @@ export function MessageList({
 
     event.preventDefault();
     event.stopPropagation();
+    longPressTriggeredRef.current = false;
   }
 
   function cancelLongPress() {
@@ -169,6 +170,9 @@ export function MessageList({
                     } ${isMine ? "left-2 sm:left-4" : "right-2 sm:right-4"
                     }`}
                     onTouchStart={(event) => event.stopPropagation()}
+                    onTouchEnd={(event) => event.stopPropagation()}
+                    onTouchMove={(event) => event.stopPropagation()}
+                    onTouchCancel={(event) => event.stopPropagation()}
                   >
                     {QUICK_REACTIONS.map((emoji) => (
                       <button
