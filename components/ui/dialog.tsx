@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { ReactNode } from "react";
 import { Button } from "./button";
 
@@ -31,8 +32,9 @@ export function Dialog({ title, description, hideHeader = false, open, onClose, 
               {title ? <h2 className="text-lg font-bold text-[#262538]">{title}</h2> : null}
               {description ? <p className="mt-1 text-sm text-[#77758a]">{description}</p> : null}
             </div>
-            <Button type="button" variant="ghost" onClick={onClose} className="px-2 py-1">
-              X
+            <Button type="button" variant="ghost" onClick={onClose} className="grid h-8 w-8 place-items-center p-0">
+              <X className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Close</span>
             </Button>
           </div>
         ) : null}

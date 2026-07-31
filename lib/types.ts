@@ -57,8 +57,11 @@ export type DeletedMessageEvent = {
 export type Invitation = {
   id: number;
   workSpaceId: number;
+  workSpaceName?: string | null;
   invitedUserId?: number | null;
   invitedByUserId: number;
+  invitedByUsername?: string | null;
+  invitedByEmail?: string | null;
   token: string;
   expireAt: string;
   acceptAt?: string | null;
