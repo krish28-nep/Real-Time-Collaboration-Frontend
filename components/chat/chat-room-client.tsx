@@ -532,6 +532,10 @@ export function ChatRoomClient({ channelId, workspaceId }: ChatRoomClientProps) 
         open={isInvitationInboxOpen}
         onAccept={(invitation) => acceptInvitationMutation.mutate(invitation)}
         onClose={() => setIsInvitationInboxOpen(false)}
+        onInviteClick={() => {
+          setIsInvitationInboxOpen(false);
+          setIsInviteOpen(true);
+        }}
       />
 
       <Dialog

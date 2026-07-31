@@ -12,6 +12,7 @@ type InvitationInboxDialogProps = {
   open: boolean;
   onAccept: (invitation: Invitation) => void;
   onClose: () => void;
+  onInviteClick: () => void;
 };
 
 export function InvitationInboxDialog({
@@ -21,6 +22,7 @@ export function InvitationInboxDialog({
   open,
   onAccept,
   onClose,
+  onInviteClick,
 }: InvitationInboxDialogProps) {
   return (
     <Dialog
@@ -29,6 +31,13 @@ export function InvitationInboxDialog({
       title="Workspace invitations"
       description="Accept pending invitations from here."
     >
+      <div className="mb-3 flex justify-end">
+        <Button type="button" onClick={onInviteClick} className="flex items-center gap-2">
+          <UserPlus className="h-4 w-4" aria-hidden="true" />
+          Invite teammate
+        </Button>
+      </div>
+
       {isLoading ? <p className="text-sm text-[#77758a]">Loading invitations...</p> : null}
 
       {!isLoading && invitations.length === 0 ? (
